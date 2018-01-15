@@ -18,6 +18,7 @@ ip_info = ''
 login_url = 'TouHouServer/logi/login'
 fengna_url = 'TouHouServer/actor/fengna'
 news_url = 'TouHouServer/actor/newsdata'
+gift_url = 'TouHouServer/equipment/gift'
 client_key = 'konakona'
 client_version = '1.0.2.0'
 username = ''
@@ -152,12 +153,34 @@ def getnews():
     print returnjson['newscontent']
 
 def printitem(itemlist):
-    print 'ID\tname'
     for item in itemlist:
         print item['equipmentid'] + '\t' + item['equipmentname'] + ' * ' + item['countnumber']
 
+def senditem():
+    itemid = raw_input("Input item id:")
+    cardid = raw_input("Input char id:")
+    if(not itemid in plists['equipment'] or not cardid in plists['card']):
+        print 'Input error.'
+        return
+    count_str = raw_input("Count:")
+    if not count_str.isdigit():
+        print 'Input error.'
+        return
+    count = int(count_str)
+    dosenditem(cardid,itemid,count)
+    
+def dosenditem(cardid,itemid,count):
+    url = dataip + gift_url
+    param = {'cardid': cardid, 'equipmentid':itemid, 'count': count}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    print req.text
+    returnjson = json.loads(req.text)
+
+def sellitem():
+    print 'sellitem'
+
 def itemfunc():
-    print 'items'
     itemlists = {'1':[],'2':[],'3':[],'4':[]}
     for equip in userequipments:
         id = equip['equipmentid']
@@ -176,7 +199,7 @@ def itemfunc():
     if(sel == 2):
         return
     print '============================================'
-    {0:None, 1:None}[sel]()
+    {0:senditem, 1:sellitem}[sel]()
 
 if __name__ == '__main__':
     init_user()
