@@ -92,6 +92,16 @@ def init_plist():
         file.close()
     print 'complete.'
 
+def select(max):
+    sel = -1
+    while(sel < 0 or sel > max):
+        s = raw_input('输入选项[0-' + str(max) + ']:')
+        if(s.isdigit()):
+            sel = int(s)
+        if(sel < 0 or sel > max):
+            print 'Invalid input "' + s + '"'
+    return sel
+
 def menu():
     print '===================STATUS==================='
     print resources['gamename'] + ', LV ' + resources['level'] + ', ' + resources['exp'] + '/' + resources['upexp']
@@ -101,20 +111,20 @@ def menu():
     print '0. 出击（未实装）'
     print '1. FengNa - 领取赛钱箱'
     print '2. News - 文文新闻'
-    print '3. 物品（未实装）'
+    print '3. 物品（半实装）'
     print '4. 整备（未实装）'
     print '5. 委托（未实装）'
     print '6. 宴会（未实装）'
     print '7. 锻造（未实装）'
     print '8. 退出'
-    sel = -1
-    while(sel < 0 or sel > 8):
-        str = raw_input('输入选项[0-8]:')
-        if(str.isdigit()):
-            sel = int(str)
-        if(sel < 0 or sel > 8):
-            print 'Invalid input "' + str + '"'
-    return sel
+    return select(8)
+
+def itemmenu():
+    print '==================ITEMMENU=================='
+    print '0. 赠送'
+    print '1. 出售'
+    print '2. 返回'
+    return select(2)
 
 def fengna():
     global resources
@@ -132,7 +142,6 @@ def fengna():
     resources['food'] = unicode(int(resources['food']) + int(returnjson['food']))
 
 def getnews():
-    print 'news'
     url = dataip + news_url
     param = {'m1': 1}
     data = {'session': session}
@@ -141,6 +150,33 @@ def getnews():
     print 'Title: ' + returnjson['newsname']
     print 'Author: ' + returnjson['actorname']
     print returnjson['newscontent']
+
+def printitem(itemlist):
+    print 'ID\tname'
+    for item in itemlist:
+        print item['equipmentid'] + '\t' + item['equipmentname'] + ' * ' + item['countnumber']
+
+def itemfunc():
+    print 'items'
+    itemlists = {'1':[],'2':[],'3':[],'4':[]}
+    for equip in userequipments:
+        id = equip['equipmentid']
+        num = equip['countnumber']
+        compactequip = {'equipmentid': id, 'countnumber': num, 'equipmentname': plists['equipment'][id]['equipmentname']}
+        itemlists[plists['equipment'][id]['type']].append(compactequip)
+    print 'Weapons:'
+    printitem(itemlists['1'])
+    print 'Armors:'
+    printitem(itemlists['2'])
+    print 'Items:'
+    printitem(itemlists['3'])
+    print 'Materials:'
+    printitem(itemlists['4'])
+    sel = itemmenu()
+    if(sel == 2):
+        return
+    print '============================================'
+    {0:None, 1:None}[sel]()
 
 if __name__ == '__main__':
     init_user()
@@ -154,8 +190,9 @@ if __name__ == '__main__':
     #exit()
     while(1):
         sel = menu()
+        print '============================================'
         {
             0: None, 1: fengna, 2: getnews,
-            3: None, 4: None, 5: None,
+            3: itemfunc, 4: None, 5: None,
             6: None, 7: None, 8: exit
         }[sel]()
