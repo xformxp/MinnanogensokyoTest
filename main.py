@@ -14,7 +14,6 @@ is_json['lm_dialog'] = False
 is_json['system'] = False
 
 ip_login = 'http://121.40.19.137:8070/'
-ip_info = ''
 login_url = 'TouHouServer/logi/login'
 data_url = 'TouHouServer/actor/playerdata'
 fengna_url = 'TouHouServer/actor/fengna'
@@ -117,13 +116,23 @@ def testjson(s):
         return False, None
     return True, returnjson
 
+def printjson(js):
+    print json.dumps(js, ensure_ascii = False)
+
+def drawline(s = '', length = 50):
+    s_len = len(s)
+    len1 = (length-s_len)/2
+    len2 = length-s_len-len1
+    line = ''.join(['=' for i in range(len1)]) + s + ''.join(['=' for i in range(len2)])
+    print line
+
 def menu():
-    print '===================STATUS==================='
+    drawline('STATUS')
     print resources['gamename'] + ', LV ' + resources['level'] + ', ' + resources['exp'] + '/' + resources['upexp']
     print 'Gold: ' + resources['gold'] + ', faith: ' + resources['faith'] + ', food: ' + resources['food']
     print 'session: ' + session
-    print '====================MENU===================='
-    print '0. 出击（未实装）'
+    drawline('MENU')
+    print '0. Battle - 出击'
     print '1. FengNa - 领取赛钱箱'
     print '2. News - 文文新闻'
     print '3. Equipments - 物品'
@@ -136,20 +145,20 @@ def menu():
     return select(9)
 
 def itemmenu():
-    print '==================ITEMMENU=================='
+    drawline('ITEMMENU')
     print '0. 赠送'
     print '1. 出售'
     print '2. 返回'
     return select(2)
 
 def cardmenu():
-    print '==================CARDMENU=================='
+    drawline('CARDMENU')
     print '0. 查看人物'
     print '1. 返回'
     return select(1)
 
 def questmenu():
-    print '=================QUESTSMENU================='
+    drawline('QUESTMENU')
     print '0. 刷新任务列表'
     print '1. 敲击任务'
     print '2. 返回'
@@ -179,6 +188,7 @@ def updatequests():
     userquests = returnjson
 
 def fengna():
+    drawline('FENGNA')
     global resources
     url = dataip + fengna_url
     param = {'m1': 1}
@@ -194,6 +204,7 @@ def fengna():
     resources['food'] = unicode(int(resources['food']) + int(returnjson['food']))
 
 def getnews():
+    drawline('NEWS')
     url = dataip + news_url
     param = {'m1': 1}
     data = {'session': session}
@@ -208,6 +219,7 @@ def printitem(itemlist):
         print item['equipmentid'] + '\t' + item['equipmentname'] + ' * ' + item['countnumber']
 
 def senditem():
+    drawline('SEND')
     itemid = raw_input("Input item id:")
     cardid = raw_input("Input char id:")
     if(not itemid in plists['equipment'] or not cardid in plists['card']):
@@ -230,6 +242,7 @@ def dosenditem(cardid,itemid,count):
     status, returnjson = testjson(req.text)
 
 def sellitem():
+    drawline('SELL')
     itemid = raw_input("Input item id:")
     if not itemid in plists['equipment']:
         print 'Input error.'
@@ -251,6 +264,7 @@ def dosellitem(itemid,count):
     status, returnjson = testjson(req.text)
 
 def itemfunc():
+    drawline('EQUIPMENT')
     itemlists = {'1':[],'2':[],'3':[],'4':[]}
     for equip in userequipments:
         id = equip['equipmentid']
@@ -268,10 +282,10 @@ def itemfunc():
     sel = itemmenu()
     if(sel == 2):
         return
-    print '============================================'
     {0:senditem, 1:sellitem}[sel]()
 
 def carddetail(cardlist):
+    drawline('CARDDETAIL')
     cardid = raw_input("Input card id:")
     if not cardid in plists['card']:
         print 'Input error.'
@@ -307,6 +321,7 @@ def carddetail(cardlist):
     print 'TODO: 加点，切换装备，咕了'
 
 def cardfunc():
+    drawline('CARD')
     cardlist = {}
     for card in usercards:
         cardlist[card['cardid']] = card
@@ -314,10 +329,10 @@ def cardfunc():
     sel = cardmenu()
     if(sel == 1):
         return
-    print '============================================'
     {0:carddetail}[sel](cardlist)
 
 def questfunc():
+    drawline('QUEST')
     sel = 0
     updatequests()
     while sel != 2:
@@ -381,6 +396,7 @@ def dosubmitquest(questid,quest):
     updatequests()
 
 def banquetfunc():
+    drawline('BANQUET')
     print banquetstatus
     if banquetstatus['state'] == '2':
         banquet_type = banquetstatus['type']
@@ -394,6 +410,64 @@ def dostartbanquet(cardid, banquet_type):
     data = {'session': session}
     req = requests.post(url, params = param, data = data)
 
+#TODO: banquets
+
+def battlefunc():
+    drawline('BATTLE')
+    bootyns = {}
+    avail_maps = []
+    for m in mapstatus:
+        bootyns[m['mapid']] = m['bootyn']
+    maps = plists['map']
+    for m in maps:
+        if m in bootyns:
+            print m + '\t' + maps[m]['groupname'] + ' - ' + maps[m]['mapname'] + ': ' + bootyns[m]
+            avail_maps.append(m)
+        elif maps[m]['needmapid'] == '' or maps[m]['needmapid'] in bootyns:
+            print m + '\t' + maps[m]['groupname'] + ' - ' + maps[m]['mapname'] + ': ?'
+            avail_maps.append(m)
+    mapname = raw_input('Input map id: ')
+    if mapname not in maps:
+        print 'Input error.'
+        return
+    elif mapname not in avail_maps:
+        print 'Map not available.'
+        return
+    sel_group = selectgroup()
+    if sel_group == None:
+        return
+    gotomap(mapname, sel_group)
+
+def selectgroup():
+    drawline('SELECT GROUP')
+    grouplist = {}
+    # eliminate redundancy
+    for group in teamlist:
+        if group['groupid'] not in grouplist:
+            grouplist[group['groupid']] = group
+    for groupid in grouplist:
+        printgroup(grouplist[groupid])
+    print 'Select a group'
+    sel = select(5)
+    if str(sel) not in grouplist:
+        print 'Invalid group.'
+        return None
+    sel_group = grouplist[str(sel)]
+    drawline('GROUP INFO')
+    printgroup(sel_group)
+    print 'TODO: Edit group' #TODO
+    return sel_group
+
+def printgroup(group):
+    positionlist = {'12': 'Atk Mid(Captain)', '14': 'Atk Top', '10': 'Atk Bottom', '03': 'Def Top', '01': 'Def Bottom', '23': 'Aid Top', '21': 'Aid Bottom'}
+    print 'Group #' + group['groupid'] + ':'
+    for card in group['useractors']:
+        position = card['mappointx'] + card['mappointy']
+        print positionlist[position] + ': ' + card['cardid'], plists['card'][card['cardid']]['cardname'] + ', tag = ' + card['tag']
+
+def gotomap(mapname, sel_group):
+    print 'TODO: gotomap' #TODO
+
 if __name__ == '__main__':
     init_user()
     init_plist()
@@ -406,9 +480,8 @@ if __name__ == '__main__':
     #exit()
     while(1):
         sel = menu()
-        print '============================================'
         {
-            0: None, 1: fengna, 2: getnews,
+            0: battlefunc, 1: fengna, 2: getnews,
             3: itemfunc, 4: cardfunc, 5: questfunc,
             6: banquetfunc, 7: None, 8: None, 9: exit,
         }[sel]()
