@@ -21,6 +21,9 @@ fengna_url = 'TouHouServer/actor/fengna'
 news_url = 'TouHouServer/actor/newsdata'
 gift_url = 'TouHouServer/equipment/gift'
 sell_url = 'TouHouServer/equipment/sell'
+questdata_url = 'TouHouServer/quests/questsData'
+acceptquest_url = 'TouHouServer/quests/acceptQuests'
+cancelquest_url = 'TouHouServer/quests/cancelQuests'
 client_key = 'konakona'
 client_version = '1.0.2.0'
 username = ''
@@ -45,7 +48,7 @@ def login():
     req = requests.post(url, params = param, data = data)
     returnjson = json.loads(req.text)
     code = returnjson['code']
-    if (code==1):
+    if (code!='1'):
         return False
     session = returnjson['session']
     userequipments = returnjson['userequipments']
@@ -124,7 +127,7 @@ def menu():
     print '2. News - 文文新闻'
     print '3. Equipments - 物品'
     print '4. Cards - 整备'
-    print '5. 委托（未实装）'
+    print '5. Quests - 委托'
     print '6. 宴会（未实装）'
     print '7. 锻造（未实装）'
     print '8. 命令行（未实装）'
@@ -144,6 +147,13 @@ def cardmenu():
     print '1. 返回'
     return select(1)
 
+def questmenu():
+    print '=================QUESTSMENU================='
+    print '0. 刷新任务列表'
+    print '1. 敲击任务'
+    print '2. 返回'
+    return select(2)
+
 def updatedata():
     global userquests
     global newsid
@@ -157,6 +167,15 @@ def updatedata():
     userquests = returnjson['userquests']
     newsid = returnjson['newsid']
     resources = returnjson['userresources']
+
+def updatequests():
+    global userquests
+    url = dataip + questdata_url
+    param = {'m1': 1}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    returnjson = json.loads(req.text)
+    userquests = returnjson
 
 def fengna():
     global resources
@@ -297,6 +316,69 @@ def cardfunc():
     print '============================================'
     {0:carddetail}[sel](cardlist)
 
+def questfunc():
+    sel = 0
+    updatequests()
+    while sel != 2:
+        operations = {}
+        questlist = {}
+        for quest in userquests:
+            id = quest['questsid']
+            questdetail = plists['quests'][id]
+            questlist[id] = quest
+            if int(quest['acceptflag']) == 0:
+                print '[未接受]\t',
+                operations[id] = doacceptquest
+            elif quest['complete'] == 'false':
+                print '[进行中]\t',
+                operations[id] = docancelquest
+            else:
+                print '[已完成]\t',
+                operations[id] = None #TODO
+            print id + '\t' + questdetail['cyclename'] + questdetail['name']
+            # print json.dumps(quest, ensure_ascii=False)
+        sel = questmenu()
+        if(sel != 2):
+            print '============================================'
+        if(sel == 0):
+            updatequests()
+        elif(sel == 1):
+            questid = raw_input('Input questid: ')
+            if questid not in plists['quests']:
+                print 'Invalid input'
+            elif questid not in operations:
+                print 'Quest not in list'
+            else:
+                operations[questid](questid,questlist[questid])
+    updatedata()
+
+def doacceptquest(questid,quest):
+    url = dataip + acceptquest_url
+    param = {'questsid':questid}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    # print req.text
+    if req.text == 'success':
+        quest['acceptflag'] = '1'
+
+def docancelquest(questid,quest):
+    url = dataip + acceptquest_url
+    param = {'questsid':questid}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    # print req.text
+    if req.text == 'success':
+        quest['acceptflag'] = '0'
+
+def dosubmitquest(questid,quest):
+    url = dataip + submitquest_url
+    param = {'questsid':questid}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    # print req.text
+    status, returnjson = testjson(req.text)
+    updatequests()
+
 if __name__ == '__main__':
     init_user()
     init_plist()
@@ -312,6 +394,6 @@ if __name__ == '__main__':
         print '============================================'
         {
             0: None, 1: fengna, 2: getnews,
-            3: itemfunc, 4: cardfunc, 5: None,
+            3: itemfunc, 4: cardfunc, 5: questfunc,
             6: None, 7: None, 8: None, 9: exit,
         }[sel]()
