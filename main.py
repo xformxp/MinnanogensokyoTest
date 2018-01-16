@@ -24,6 +24,7 @@ sell_url = 'TouHouServer/equipment/sell'
 questdata_url = 'TouHouServer/quests/questsData'
 acceptquest_url = 'TouHouServer/quests/acceptQuests'
 cancelquest_url = 'TouHouServer/quests/cancelQuests'
+submitquest_url = 'TouHouServer/quests/submitQuests'
 client_key = 'konakona'
 client_version = '1.0.2.0'
 username = ''
@@ -128,7 +129,7 @@ def menu():
     print '3. Equipments - 物品'
     print '4. Cards - 整备'
     print '5. Quests - 委托'
-    print '6. 宴会（未实装）'
+    print '6. Banquet - 宴会'
     print '7. 锻造（未实装）'
     print '8. 命令行（未实装）'
     print '9. 退出'
@@ -335,7 +336,7 @@ def questfunc():
             else:
                 print '[已完成]\t',
                 operations[id] = None #TODO
-            print id + '\t' + questdetail['cyclename'] + questdetail['name']
+            print id + '\t' + questdetail['cyclename'] + questdetail['name'] + ': ' + questdetail['true_content']
             # print json.dumps(quest, ensure_ascii=False)
         sel = questmenu()
         if(sel != 2):
@@ -379,6 +380,20 @@ def dosubmitquest(questid,quest):
     status, returnjson = testjson(req.text)
     updatequests()
 
+def banquetfunc():
+    print banquetstatus
+    if banquetstatus['state'] == '2':
+        banquet_type = banquetstatus['type']
+        print '筹备中:', plists['banquet'][banquet_type]['name']
+        print '剩余:', banquetstatus['readyendsecond'] + 's'
+        print 'TODO: 快速筹备' #TODO
+
+def dostartbanquet(cardid, banquet_type):
+    url = dataip + startbanquet_url
+    param = {'cardid': cardid, 'type': banquet_type}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+
 if __name__ == '__main__':
     init_user()
     init_plist()
@@ -395,5 +410,5 @@ if __name__ == '__main__':
         {
             0: None, 1: fengna, 2: getnews,
             3: itemfunc, 4: cardfunc, 5: questfunc,
-            6: None, 7: None, 8: None, 9: exit,
+            6: banquetfunc, 7: None, 8: None, 9: exit,
         }[sel]()
