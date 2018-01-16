@@ -16,9 +16,11 @@ is_json['system'] = False
 ip_login = 'http://121.40.19.137:8070/'
 ip_info = ''
 login_url = 'TouHouServer/logi/login'
+data_url = 'TouHouServer/actor/playerdata'
 fengna_url = 'TouHouServer/actor/fengna'
 news_url = 'TouHouServer/actor/newsdata'
 gift_url = 'TouHouServer/equipment/gift'
+sell_url = 'TouHouServer/equipment/sell'
 client_key = 'konakona'
 client_version = '1.0.2.0'
 username = ''
@@ -103,6 +105,14 @@ def select(max):
             print 'Invalid input "' + s + '"'
     return sel
 
+def testjson(s):
+    try:
+        returnjson = json.loads(s)
+    except ValueError:
+        print s
+        return False, None
+    return True, returnjson
+
 def menu():
     print '===================STATUS==================='
     print resources['gamename'] + ', LV ' + resources['level'] + ', ' + resources['exp'] + '/' + resources['upexp']
@@ -112,13 +122,14 @@ def menu():
     print '0. 出击（未实装）'
     print '1. FengNa - 领取赛钱箱'
     print '2. News - 文文新闻'
-    print '3. 物品（半实装）'
-    print '4. 整备（未实装）'
+    print '3. Equipments - 物品'
+    print '4. Cards - 整备'
     print '5. 委托（未实装）'
     print '6. 宴会（未实装）'
     print '7. 锻造（未实装）'
-    print '8. 退出'
-    return select(8)
+    print '8. 命令行（未实装）'
+    print '9. 退出'
+    return select(9)
 
 def itemmenu():
     print '==================ITEMMENU=================='
@@ -126,6 +137,26 @@ def itemmenu():
     print '1. 出售'
     print '2. 返回'
     return select(2)
+
+def cardmenu():
+    print '==================CARDMENU=================='
+    print '0. 查看人物'
+    print '1. 返回'
+    return select(1)
+
+def updatedata():
+    global userquests
+    global newsid
+    global resources
+    url = dataip + data_url
+    param = {'m1': 1}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    # print req.text
+    returnjson = json.loads(req.text)
+    userquests = returnjson['userquests']
+    newsid = returnjson['newsid']
+    resources = returnjson['userresources']
 
 def fengna():
     global resources
@@ -136,7 +167,7 @@ def fengna():
     if(req.text == '0'):
         print '赛钱箱空空如也'
         return
-    returnjson = json.loads(req.text)
+    status, returnjson = testjson(req.text)
     print 'Goldget: ' + returnjson['gold'] + ', Faithget: ' + returnjson['faith'] + ', Foodget: ' + returnjson['food']
     resources['gold'] = unicode(int(resources['gold']) + int(returnjson['gold']))
     resources['faith'] = unicode(int(resources['faith']) + int(returnjson['faith']))
@@ -147,7 +178,7 @@ def getnews():
     param = {'m1': 1}
     data = {'session': session}
     req = requests.post(url, params = param, data = data)
-    returnjson = json.loads(req.text)
+    status, returnjson = testjson(req.text)
     print 'Title: ' + returnjson['newsname']
     print 'Author: ' + returnjson['actorname']
     print returnjson['newscontent']
@@ -174,11 +205,30 @@ def dosenditem(cardid,itemid,count):
     param = {'cardid': cardid, 'equipmentid':itemid, 'count': count}
     data = {'session': session}
     req = requests.post(url, params = param, data = data)
-    print req.text
-    returnjson = json.loads(req.text)
+    # print req.text
+    updatedata()
+    status, returnjson = testjson(req.text)
 
 def sellitem():
-    print 'sellitem'
+    itemid = raw_input("Input item id:")
+    if not itemid in plists['equipment']:
+        print 'Input error.'
+        return
+    count_str = raw_input("Count:")
+    if not count_str.isdigit():
+        print 'Input error.'
+        return
+    count = int(count_str)
+    dosellitem(itemid,count)
+
+def dosellitem(itemid,count):
+    url = dataip + sell_url
+    param = {'equipmentid':itemid, 'count': count}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    # print req.text
+    updatedata()
+    status, returnjson = testjson(req.text)
 
 def itemfunc():
     itemlists = {'1':[],'2':[],'3':[],'4':[]}
@@ -201,6 +251,52 @@ def itemfunc():
     print '============================================'
     {0:senditem, 1:sellitem}[sel]()
 
+def carddetail(cardlist):
+    cardid = raw_input("Input card id:")
+    if not cardid in plists['card']:
+        print 'Input error.'
+        return
+    if not cardid in cardlist:
+        print 'You do not possess this card.'
+        return
+    card = cardlist[cardid]
+    print cardid + '\t' + card['cardname'] + ', LV' + card['level'] + ', ' + card['exp'] + '/' + card['upexp']
+    print 'Loyalty: ' + card['loyalty'] + ', Points: ' + card['feat']
+    print 'Skinid: ' + card['skinid'] + ', ' + plists['skin'][card['skinid']]['skinname'] + ', HasSkins: ' + card['haveskinids']
+    print 'HP: ' + card['hp'] + ', Def: ' + card['def'] + ', A.rate: ' + card['avoid'] + ', Luck: ' + card['lucky']
+    print 'AtkMel: ' + card['atk_mel'] + ', AtkRang: ' + card['atk_rang'] + ', H.rate: ' + card['hitrate'] + ', Crit: ' + card['crit']
+    print 'Block: ' + card['block'] + ', Speed: ' + card['speed'] 
+    if card['equipment_id_wq'] == '':
+        print 'Weapon: None,', 
+    else:
+        print 'Weapon: ' + card['equipment_id_wq'] + ' ' + plists['equipment'][card['equipment_id_wq']]['equipmentname'] + ',',
+    if card['equipment_id_fj'] == '':
+        print 'Armor: None'
+    else:
+        print 'Armor: ' + card['equipment_id_fj'] + ' ' + plists['equipment'][card['equipment_id_fj']]['equipmentname']
+    spell_atk = plists['spell'][card['spell_card_id_atk']]
+    spell_def = plists['spell'][card['spell_card_id_def']]
+    spell_aid = plists['spell'][card['spell_card_id_aid']]
+    print 'Spell Atk: ' + card['spell_card_id_atk'] + ' ' + spell_atk['name'] + spell_atk['spell_point'] + ', NeedLevel: ' + spell_atk['need_level'] + ', ' + spell_atk['spell_rate'] + '%'
+    print spell_atk['content']
+    print 'Spell Def: ' + card['spell_card_id_def'] + ' ' + spell_def['name'] + spell_def['spell_point'] + ', NeedLevel: ' + spell_def['need_level'] + ', ' + spell_def['spell_rate'] + '%'
+    print spell_def['content']
+    print 'Spell Aid: ' + card['spell_card_id_aid'] + ' ' + spell_aid['name'] + spell_aid['spell_point'] + ', NeedLevel: ' + spell_aid['need_level'] + ', ' + spell_aid['spell_rate'] + '%'
+    print spell_aid['content']
+    #TODO
+    print 'TODO: 加点，切换装备，咕了'
+
+def cardfunc():
+    cardlist = {}
+    for card in usercards:
+        cardlist[card['cardid']] = card
+        print card['cardid'] + '\t' + card['cardname']
+    sel = cardmenu()
+    if(sel == 1):
+        return
+    print '============================================'
+    {0:carddetail}[sel](cardlist)
+
 if __name__ == '__main__':
     init_user()
     init_plist()
@@ -216,6 +312,6 @@ if __name__ == '__main__':
         print '============================================'
         {
             0: None, 1: fengna, 2: getnews,
-            3: itemfunc, 4: None, 5: None,
-            6: None, 7: None, 8: exit
+            3: itemfunc, 4: cardfunc, 5: None,
+            6: None, 7: None, 8: None, 9: exit,
         }[sel]()
