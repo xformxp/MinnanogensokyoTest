@@ -6,6 +6,8 @@ import os       #file stream
 import getpass  #enter password
 import base64   #base64 library
 import requests #HTTP POST
+import numpy    #chi2 random
+import time     #time delay
 
 plist_names = ['banquet','blueprint','card','dialog','equipment','lm_dialog','map','quests','skin','spell','system']
 plists = dict(zip(plist_names,[None for i in range(len(plist_names))]))
@@ -24,6 +26,8 @@ questdata_url = 'TouHouServer/quests/questsData'
 acceptquest_url = 'TouHouServer/quests/acceptQuests'
 cancelquest_url = 'TouHouServer/quests/cancelQuests'
 submitquest_url = 'TouHouServer/quests/submitQuests'
+mapdata_url = 'TouHouServer/map/mapdata'
+battledata_url = 'TouHouServer/battle/battledata'
 client_key = 'konakona'
 client_version = '1.0.2.0'
 username = ''
@@ -125,6 +129,12 @@ def drawline(s = '', length = 50):
     len2 = length-s_len-len1
     line = ''.join(['=' for i in range(len1)]) + s + ''.join(['=' for i in range(len2)])
     print line
+
+def chi2_rand():
+    return int(numpy.random.chisquare(4)*10000+25000)
+
+def chi2_rand_time():
+    return numpy.random.chisquare(4)/2 + 6
 
 def menu():
     drawline('STATUS')
@@ -433,10 +443,10 @@ def battlefunc():
     elif mapname not in avail_maps:
         print 'Map not available.'
         return
-    sel_group = selectgroup()
+    sel, sel_group = selectgroup()
     if sel_group == None:
         return
-    gotomap(mapname, sel_group)
+    gotomap(mapname, sel, sel_group)
 
 def selectgroup():
     drawline('SELECT GROUP')
@@ -451,12 +461,12 @@ def selectgroup():
     sel = select(5)
     if str(sel) not in grouplist:
         print 'Invalid group.'
-        return None
+        return -1, None
     sel_group = grouplist[str(sel)]
     drawline('GROUP INFO')
     printgroup(sel_group)
     print 'TODO: Edit group' #TODO
-    return sel_group
+    return sel, sel_group
 
 def printgroup(group):
     positionlist = {'12': 'Atk Mid(Captain)', '14': 'Atk Top', '10': 'Atk Bottom', '03': 'Def Top', '01': 'Def Bottom', '23': 'Aid Top', '21': 'Aid Bottom'}
@@ -465,10 +475,70 @@ def printgroup(group):
         position = card['mappointx'] + card['mappointy']
         print positionlist[position] + ': ' + card['cardid'], plists['card'][card['cardid']]['cardname'] + ', tag = ' + card['tag']
 
-def gotomap(mapname, sel_group):
-    print 'TODO: gotomap' #TODO
+def gotomap(mapname, sel, sel_group):
+    print 'Gotomap!'
+    bn = dogetmapdata(mapname, 2, sel, sel_group)
+    nextflag = dogetbattledata(bn, sel_group)
+    if nextflag != '0':
+        delaytime = chi2_rand_time()
+        print 'Sleeping: ' + str(delaytime) + 's'
+        time.sleep(delaytime)
+        nextflag = dogetbattledata(bn, sel_group)
+
+def dogetmapdata(mapid, difficulty, groupid, groupdata):
+    url = dataip + mapdata_url
+    s = ''
+    for card in groupdata['useractors']:
+        s += card['cardid'] + ',' + card['mappointx'] + ',' + card['mappointy'] + ';'
+    param = {'mapid': mapid, 'difficulty': difficulty, 'groupid': groupid, 'data':s}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    status, returnjson = testjson(req.text)
+    if status == True:
+        return returnjson['bn']
+    else:
+        return None
+
+def dogetbattledata(bn, groupdata):
+    url = dataip + battledata_url
+    s = ''
+    for card in groupdata['useractors']:
+        s += card['cardid'] + ',' + card['mappointx'] + ',' + card['mappointy'] + ';'
+    param = {'m1': 'battledata', 'data': s, 'or': 0, 'bk': hashlib.sha1(client_key + bn).hexdigest(), 'equipmentid': '', 'iskszd': 0, 'kw': 'K' + str(chi2_rand())}
+    data = {'session': session}
+    req = requests.post(url, params = param, data = data)
+    status, returnjson = testjson(req.text)
+    if status == False:
+        return None
+    nextflag = returnjson['battleData'][-1]['nextFlag']
+    printbattledata(returnjson)
+    return nextflag
+    
+def printbattledata(battledata):
+    #print json.dumps(battledata, ensure_ascii = False)
+    attacktypes = {u'3001': u'弹幕', u'1001': u'体术（撞击）', u'1002': u'体术（爪击）', u'1003': u'体术（响子）'}
+    damagetypes = {u'0': u'(miss)', u'1': u'', u'2': u'(block)', u'3': u'(crit)'}
+    for data in battledata['battleData']:
+    #    print json.dumps(data, ensure_ascii = False)
+        if data['cmd'] == 'R':
+            print 'ROUND #' + data['rounds']
+        elif data['cmd'] == 'A':
+            print 'CHARA #' + data['actorid'] + ' moves.'
+        elif data['cmd'] == 'D':
+            for unattack in data['unattack']:
+                print 'CHARA #' + data['attackid'] + ' attacks CHARA #'+ unattack['unattackid'] + ', damage = ' + unattack['damage'] + damagetypes[unattack['damagetype']] + ', type = ' + attacktypes[unattack['attacktype']]
+        elif data['cmd'] == 'S':
+            print 'SPELL: ' + data['spellname']
+        elif data['cmd'] == 'RESULT':
+            print 'RESULT: ' + data['result']
+        else:
+            print 'UNKNOWN cmd ' + data['cmd']
+    return
 
 if __name__ == '__main__':
+    #for i in range(10):
+    #   print chi2_rand_time()
+    #exit()
     init_user()
     init_plist()
     if(login()==False):
