@@ -8,6 +8,7 @@ import base64   #base64 library
 import requests #HTTP POST
 import numpy    #chi2 random
 import time     #time delay
+import io       #write unicode into file
 
 plist_names = ['banquet','blueprint','card','dialog','equipment','lm_dialog','map','quests','skin','spell','system']
 plists = dict(zip(plist_names,[None for i in range(len(plist_names))]))
@@ -135,6 +136,9 @@ def chi2_rand():
 
 def chi2_rand_time():
     return numpy.random.chisquare(4)/2 + 6
+
+def gettime():
+    return time.strftime('%Y%m%d_%H%M%S')
 
 def menu():
     drawline('STATUS')
@@ -515,9 +519,11 @@ def dogetbattledata(bn, groupdata):
     return nextflag
     
 def printbattledata(battledata):
-    #print json.dumps(battledata, ensure_ascii = False)
     attacktypes = {u'3001': u'弹幕', u'1001': u'体术（撞击）', u'1002': u'体术（爪击）', u'1003': u'体术（响子）'}
-    damagetypes = {u'0': u'(miss)', u'1': u'', u'2': u'(block)', u'3': u'(crit)'}
+    damagetypes = {u'0': u'(miss)', u'1': u'', u'2': u'(block)', u'3': u'(crit)'} 
+    filename = 'log/' + gettime() + '.log'
+    f = io.open(filename, 'w', encoding = 'utf-8')
+    f.write(json.dumps(battledata, ensure_ascii = False, indent = 4, separators = (',',': ')))
     for data in battledata['battleData']:
     #    print json.dumps(data, ensure_ascii = False)
         if data['cmd'] == 'R':
@@ -533,6 +539,7 @@ def printbattledata(battledata):
             print 'RESULT: ' + data['result']
         else:
             print 'UNKNOWN cmd ' + data['cmd']
+            print json.dumps(data, ensure_ascii = False)
     return
 
 if __name__ == '__main__':
