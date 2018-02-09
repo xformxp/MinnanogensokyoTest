@@ -1,28 +1,19 @@
 #coding: utf8
-import plistlib #analyze plist
 import json     #analyze json
 import hashlib  #calculate SHA1
-import os       #file stream
 import getpass  #enter password
-import base64   #base64 library
 import requests #HTTP POST
-import numpy    #chi2 random
-import time     #time delay
 import io       #write unicode into file
 
-plist_names = ['banquet','blueprint','card','dialog','equipment','lm_dialog','map','quests','skin','spell','system']
-plists = dict(zip(plist_names,[None for i in range(len(plist_names))]))
-is_json = dict(zip(plist_names,[True for i in range(len(plist_names))]))
-is_json['lm_dialog'] = False
-is_json['system'] = False
+import plists
+import userinf
+import utils
+import general
+import equipments
 
+# Client Constants
 ip_login = 'http://121.40.19.137:8070/'
 login_url = 'TouHouServer/logi/login'
-data_url = 'TouHouServer/actor/playerdata'
-fengna_url = 'TouHouServer/actor/fengna'
-news_url = 'TouHouServer/actor/newsdata'
-gift_url = 'TouHouServer/equipment/gift'
-sell_url = 'TouHouServer/equipment/sell'
 questdata_url = 'TouHouServer/quests/questsData'
 acceptquest_url = 'TouHouServer/quests/acceptQuests'
 cancelquest_url = 'TouHouServer/quests/cancelQuests'
@@ -31,166 +22,62 @@ mapdata_url = 'TouHouServer/map/mapdata'
 battledata_url = 'TouHouServer/battle/battledata'
 client_key = 'konakona'
 client_version = '1.0.2.0'
-username = ''
-password = ''
-session = ''
-userequipments = None   #JSONList
-usercards = None        #JSONList
-userquests = None       #JSONList
-newsid = None           #string (unicode)
-teamlist = None         #JSONList
-cardequip = None        #JSONList
-mapstatus = None        #JSONList
-banquetstatus = None    #JSONObject
-resources = None        #JSONObject
-dataip = None           #string (unicode)
 
 def login():
-    global session,userequipments,usercards,userquests,newsid,teamlist,cardequip,mapstatus,banquetstatus,resources,dataip
     url = ip_login + login_url 
-    param = {'v': client_version,'u': username, 'key': hashlib.sha1(client_key + password).hexdigest()}
+    param = {'v': client_version,'u': userinf.username, 'key': hashlib.sha1(client_key + userinf.password).hexdigest()}
     data = {'session': 'UNLOGIN'}
     req = requests.post(url, params = param, data = data)
     returnjson = json.loads(req.text)
     code = returnjson['code']
     if (code!='1'):
         return False
-    session = returnjson['session']
-    userequipments = returnjson['userequipments']
-    usercards = returnjson['usercarddatas']
-    userquests = returnjson['userquests']
-    newsid = returnjson['newsid']
-    teamlist = returnjson['usergrouplist']
-    cardequip = returnjson['usercardequipments']
-    mapstatus = returnjson['usermaps']
-    banquetstatus = returnjson['userbanquet']
-    resources = returnjson['userresources']
-    dataip = returnjson['ip']
+    userinf.session = returnjson['session']
+    userinf.userequipments = returnjson['userequipments']
+    userinf.usercards = returnjson['usercarddatas']
+    userinf.userquests = returnjson['userquests']
+    userinf.newsid = returnjson['newsid']
+    userinf.teamlist = returnjson['usergrouplist']
+    userinf.cardequip = returnjson['usercardequipments']
+    userinf.mapstatus = returnjson['usermaps']
+    userinf.banquetstatus = returnjson['userbanquet']
+    userinf.resources = returnjson['userresources']
+    userinf.dataip = returnjson['ip']
     #print json.dumps(usercards,ensure_ascii = False)
     return True
 
-def init_user():
-    global username
-    global password
-    print 'initing user...'
-    if(os.path.isfile('user.inf')):
-        file = open('user.inf','r')
-        username = file.readline().replace('\n','')
-        password = base64.b64decode(file.readline())
-    else:
-        username = raw_input("Username: ")
-        password = getpass.getpass()
-        file = open('user.inf','w')
-        file.write(username + '\n')
-        file.write(base64.b64encode(password))
-        file.close()
-    print 'complete.'
-
-def init_plist():
-    global plists
-    print 'initing plists...'
-    for name in plist_names:
-        filename = 'data/' + name + '.plist'
-        file = open(filename,'r')
-        content = file.read().replace('&','&amp;')
-        plist = plistlib.readPlistFromString(content)
-        if(is_json[name]):
-            for key in plist:
-                plist[key] = json.loads(plist[key])
-            plists[name] = plist
-        else:
-            plists[name] = plist
-        file.close()
-    print 'complete.'
-
-def select(max):
-    sel = -1
-    while(sel < 0 or sel > max):
-        s = raw_input('输入选项[0-' + str(max) + ']:')
-        if(s.isdigit()):
-            sel = int(s)
-        if(sel < 0 or sel > max):
-            print 'Invalid input "' + s + '"'
-    return sel
-
-def testjson(s):
-    try:
-        returnjson = json.loads(s)
-    except ValueError:
-        print s
-        return False, None
-    return True, returnjson
-
-def printjson(js):
-    print json.dumps(js, ensure_ascii = False)
-
-def drawline(s = '', length = 50):
-    s_len = len(s)
-    len1 = (length-s_len)/2
-    len2 = length-s_len-len1
-    line = ''.join(['=' for i in range(len1)]) + s + ''.join(['=' for i in range(len2)])
-    print line
-
-def chi2_rand():
-    return int(numpy.random.chisquare(4)*10000+25000)
-
-def chi2_rand_time():
-    return numpy.random.chisquare(4)/2 + 7
-
-def gettime():
-    return time.strftime('%Y%m%d_%H%M%S')
-
 def menu():
-    drawline('STATUS')
-    print resources['gamename'] + ', LV ' + resources['level'] + ', ' + resources['exp'] + '/' + resources['upexp']
-    print 'Gold: ' + resources['gold'] + ', faith: ' + resources['faith'] + ', food: ' + resources['food']
-    print 'session: ' + session
-    drawline('MENU')
-    print '0. Battle - 出击'
+    utils.drawline('STATUS')
+    print userinf.resources['gamename'] + ', LV ' + userinf.resources['level'] + ', ' + userinf.resources['exp'] + '/' + userinf.resources['upexp']
+    print 'Gold: ' + userinf.resources['gold'] + ', faith: ' + userinf.resources['faith'] + ', food: ' + userinf.resources['food']
+    print 'session: ' + userinf.session
+    utils.printjson(userinf.resources)
+    utils.drawline('MENU')
+    print '0. Battle - 出击（维护中）'
     print '1. FengNa - 领取赛钱箱'
     print '2. News - 文文新闻'
     print '3. Equipments - 物品'
-    print '4. Cards - 整备'
-    print '5. Quests - 委托'
-    print '6. Banquet - 宴会'
+    print '4. Cards - 整备（维护中）'
+    print '5. Quests - 委托（维护中）'
+    print '6. Banquet - 宴会（维护中）'
     print '7. 锻造（未实装）'
     print '8. 命令行（未实装）'
     print '9. 退出'
-    return select(9)
-
-def itemmenu():
-    drawline('ITEMMENU')
-    print '0. 赠送'
-    print '1. 出售'
-    print '2. 返回'
-    return select(2)
+    return utils.select(9)
 
 def cardmenu():
-    drawline('CARDMENU')
+    utils.drawline('CARDMENU')
     print '0. 查看人物'
     print '1. 返回'
-    return select(1)
+    return utils.select(1)
 
 def questmenu():
-    drawline('QUESTMENU')
+    utils.drawline('QUESTMENU')
     print '0. 刷新任务列表'
     print '1. 敲击任务'
     print '2. 返回'
-    return select(2)
+    return utils.select(2)
 
-def updatedata():
-    global userquests
-    global newsid
-    global resources
-    url = dataip + data_url
-    param = {'m1': 1}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    # print req.text
-    returnjson = json.loads(req.text)
-    userquests = returnjson['userquests']
-    newsid = returnjson['newsid']
-    resources = returnjson['userresources']
 
 def updatequests():
     global userquests
@@ -201,105 +88,8 @@ def updatequests():
     returnjson = json.loads(req.text)
     userquests = returnjson
 
-def fengna():
-    drawline('FENGNA')
-    global resources
-    url = dataip + fengna_url
-    param = {'m1': 1}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    if(req.text == '0'):
-        print '赛钱箱空空如也'
-        return
-    status, returnjson = testjson(req.text)
-    print 'Goldget: ' + returnjson['gold'] + ', Faithget: ' + returnjson['faith'] + ', Foodget: ' + returnjson['food']
-    resources['gold'] = unicode(int(resources['gold']) + int(returnjson['gold']))
-    resources['faith'] = unicode(int(resources['faith']) + int(returnjson['faith']))
-    resources['food'] = unicode(int(resources['food']) + int(returnjson['food']))
-
-def getnews():
-    drawline('NEWS')
-    url = dataip + news_url
-    param = {'m1': 1}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    status, returnjson = testjson(req.text)
-    print 'Title: ' + returnjson['newsname']
-    print 'Author: ' + returnjson['actorname']
-    print returnjson['newscontent']
-
-def printitem(itemlist):
-    for item in itemlist:
-        print item['equipmentid'] + '\t' + item['equipmentname'] + ' * ' + item['countnumber']
-
-def senditem():
-    drawline('SEND')
-    itemid = raw_input("Input item id:")
-    cardid = raw_input("Input char id:")
-    if(not itemid in plists['equipment'] or not cardid in plists['card']):
-        print 'Input error.'
-        return
-    count_str = raw_input("Count:")
-    if not count_str.isdigit():
-        print 'Input error.'
-        return
-    count = int(count_str)
-    dosenditem(cardid,itemid,count)
-    
-def dosenditem(cardid,itemid,count):
-    url = dataip + gift_url
-    param = {'cardid': cardid, 'equipmentid':itemid, 'count': count}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    # print req.text
-    updatedata()
-    status, returnjson = testjson(req.text)
-
-def sellitem():
-    drawline('SELL')
-    itemid = raw_input("Input item id:")
-    if not itemid in plists['equipment']:
-        print 'Input error.'
-        return
-    count_str = raw_input("Count:")
-    if not count_str.isdigit():
-        print 'Input error.'
-        return
-    count = int(count_str)
-    dosellitem(itemid,count)
-
-def dosellitem(itemid,count):
-    url = dataip + sell_url
-    param = {'equipmentid':itemid, 'count': count}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    # print req.text
-    updatedata()
-    status, returnjson = testjson(req.text)
-
-def itemfunc():
-    drawline('EQUIPMENT')
-    itemlists = {'1':[],'2':[],'3':[],'4':[]}
-    for equip in userequipments:
-        id = equip['equipmentid']
-        num = equip['countnumber']
-        compactequip = {'equipmentid': id, 'countnumber': num, 'equipmentname': plists['equipment'][id]['equipmentname']}
-        itemlists[plists['equipment'][id]['type']].append(compactequip)
-    print 'Weapons:'
-    printitem(itemlists['1'])
-    print 'Armors:'
-    printitem(itemlists['2'])
-    print 'Items:'
-    printitem(itemlists['3'])
-    print 'Materials:'
-    printitem(itemlists['4'])
-    sel = itemmenu()
-    if(sel == 2):
-        return
-    {0:senditem, 1:sellitem}[sel]()
-
 def carddetail(cardlist):
-    drawline('CARDDETAIL')
+    utils.drawline('CARDDETAIL')
     cardid = raw_input("Input card id:")
     if not cardid in plists['card']:
         print 'Input error.'
@@ -335,7 +125,7 @@ def carddetail(cardlist):
     print 'TODO: 加点，切换装备，咕了'
 
 def cardfunc():
-    drawline('CARD')
+    utils.drawline('CARD')
     cardlist = {}
     for card in usercards:
         cardlist[card['cardid']] = card
@@ -346,7 +136,7 @@ def cardfunc():
     {0:carddetail}[sel](cardlist)
 
 def questfunc():
-    drawline('QUEST')
+    utils.drawline('QUEST')
     sel = 0
     updatequests()
     while sel != 2:
@@ -410,7 +200,7 @@ def dosubmitquest(questid,quest):
     updatequests()
 
 def banquetfunc():
-    drawline('BANQUET')
+    utils.drawline('BANQUET')
     print banquetstatus
     if banquetstatus['state'] == '2':
         banquet_type = banquetstatus['type']
@@ -427,7 +217,7 @@ def dostartbanquet(cardid, banquet_type):
 #TODO: banquets
 
 def battlefunc():
-    drawline('BATTLE')
+    utils.drawline('BATTLE')
     bootyns = {}
     avail_maps = []
     for m in mapstatus:
@@ -453,7 +243,7 @@ def battlefunc():
     gotomap(mapname, sel, sel_group)
 
 def selectgroup():
-    drawline('SELECT GROUP')
+    utils.drawline('SELECT GROUP')
     grouplist = {}
     # eliminate redundancy
     for group in teamlist:
@@ -462,12 +252,12 @@ def selectgroup():
     for groupid in grouplist:
         printgroup(grouplist[groupid])
     print 'Select a group'
-    sel = select(5)
+    sel = utils.select(5)
     if str(sel) not in grouplist:
         print 'Invalid group.'
         return -1, None
     sel_group = grouplist[str(sel)]
-    drawline('GROUP INFO')
+    utils.drawline('GROUP INFO')
     printgroup(sel_group)
     print 'TODO: Edit group' #TODO
     return sel, sel_group
@@ -546,8 +336,8 @@ if __name__ == '__main__':
     #for i in range(10):
     #   print chi2_rand_time()
     #exit()
-    init_user()
-    init_plist()
+    userinf.init_user()
+    plists.init_plist()
     if(login()==False):
         print 'Login failed.'
         print 'Please delete user.inf and login again.'
@@ -558,7 +348,7 @@ if __name__ == '__main__':
     while(1):
         sel = menu()
         {
-            0: battlefunc, 1: fengna, 2: getnews,
-            3: itemfunc, 4: cardfunc, 5: questfunc,
+            0: battlefunc, 1: general.fengna, 2: general.getnews,
+            3: equipments.itemfunc, 4: cardfunc, 5: questfunc,
             6: banquetfunc, 7: None, 8: None, 9: exit,
         }[sel]()
