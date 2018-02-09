@@ -135,7 +135,7 @@ def chi2_rand():
     return int(numpy.random.chisquare(4)*10000+25000)
 
 def chi2_rand_time():
-    return numpy.random.chisquare(4)/2 + 6
+    return numpy.random.chisquare(4)/2 + 7
 
 def gettime():
     return time.strftime('%Y%m%d_%H%M%S')
