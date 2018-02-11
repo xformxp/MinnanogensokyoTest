@@ -2,14 +2,12 @@
 import userinf
 import utils
 import requests
+import db
 
 # Clinet constants
-data_url = 'TouHouServer/actor/playerdata'
-fengna_url = 'TouHouServer/actor/fengna'
-news_url = 'TouHouServer/actor/newsdata'
 
 def updatedata():
-    url = userinf.dataip + data_url
+    url = userinf.dataip + db.data_url
     param = {'m1': 1}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)
@@ -23,11 +21,10 @@ def updatedata():
 
 def fengna():
     utils.drawline('FENGNA')
-    url = userinf.dataip + fengna_url
+    url = userinf.dataip + db.fengna_url
     param = {'m1': 1}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)
-    print req.text
     if(req.text == '0'):
         print '赛钱箱空空如也'
         return
@@ -49,7 +46,7 @@ def analyze_results(returnjson):
 
 def getnews():
     utils.drawline('NEWS')
-    url = userinf.dataip + news_url
+    url = userinf.dataip + db.news_url
     param = {'m1': 1}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)

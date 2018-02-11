@@ -4,11 +4,7 @@ import utils
 import userinf
 import requests
 import general
-
-questdata_url = 'TouHouServer/quests/questsData'
-acceptquest_url = 'TouHouServer/quests/acceptQuests'
-cancelquest_url = 'TouHouServer/quests/cancelQuests'
-submitquest_url = 'TouHouServer/quests/submitQuests'
+import db
 
 def questmenu():
     utils.drawline('QUESTMENU')
@@ -19,7 +15,7 @@ def questmenu():
 
 def updatequests():
     global userquests
-    url = userinf.dataip + questdata_url
+    url = userinf.dataip + db.questdata_url
     param = {'m1': 1}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)
@@ -47,7 +43,7 @@ def questfunc():
                 operations[id] = docancelquest
             else:
                 print '[已完成]\t',
-                operations[id] = dosubmitquest #TODO
+                operations[id] = dosubmitquest
             print id + '\t' + questdetail['cyclename'] + questdetail['name'] + ': ' + questdetail['true_content']
             # print json.dumps(quest, ensure_ascii=False)
         sel = questmenu()
@@ -66,7 +62,7 @@ def questfunc():
     general.updatedata()
 
 def doacceptquest(questid,quest):
-    url = userinf.dataip + acceptquest_url
+    url = userinf.dataip + db.acceptquest_url
     param = {'questsid':questid}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)
@@ -75,7 +71,7 @@ def doacceptquest(questid,quest):
         quest['acceptflag'] = '1'
 
 def docancelquest(questid,quest):
-    url = userinf.dataip + acceptquest_url
+    url = userinf.dataip + db.acceptquest_url
     param = {'questsid':questid}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)
@@ -84,12 +80,12 @@ def docancelquest(questid,quest):
         quest['acceptflag'] = '0'
 
 def dosubmitquest(questid,quest):
-    url = userinf.dataip + submitquest_url
+    url = userinf.dataip + db.submitquest_url
     param = {'questsid':questid}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)
-    print 'submit:', req.text
-    status, returnjson = testjson(req.text)
-    analyze_results(returnjson)
+    print 'test: submitquest:', req.text #TODO
+    status, returnjson = utils.testjson(req.text)
+    general.analyze_results(returnjson)
     updatequests()
 

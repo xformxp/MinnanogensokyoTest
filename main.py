@@ -16,18 +16,13 @@ import card
 import quest
 import banquet
 import battle
+import db
 
 # Client Constants
-ip_login = 'http://121.40.19.137:8070/'
-login_url = 'TouHouServer/logi/login'
-mapdata_url = 'TouHouServer/map/mapdata'
-battledata_url = 'TouHouServer/battle/battledata'
-client_key = 'konakona'
-client_version = '1.0.2.0'
 
 def login():
-    url = ip_login + login_url 
-    param = {'v': client_version,'u': userinf.username, 'key': hashlib.sha1(client_key + userinf.password).hexdigest()}
+    url = db.ip_login + db.login_url 
+    param = {'v': db.client_version,'u': userinf.username, 'key': hashlib.sha1(db.client_key + userinf.password).hexdigest()}
     data = {'session': 'UNLOGIN'}
     req = requests.post(url, params = param, data = data)
     returnjson = json.loads(req.text)

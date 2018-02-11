@@ -4,9 +4,7 @@ import utils
 import userinf
 import requests
 import general
-
-gift_url = 'TouHouServer/equipment/gift'
-sell_url = 'TouHouServer/equipment/sell'
+import db
 
 def itemmenu():
     utils.drawline('ITEMMENU')
@@ -34,7 +32,7 @@ def senditem():
     dosenditem(cardid,itemid,count)
     
 def dosenditem(cardid,itemid,count):
-    url = userinf.dataip + gift_url
+    url = userinf.dataip + db.gift_url
     param = {'cardid': cardid, 'equipmentid':itemid, 'count': count}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)
@@ -58,7 +56,7 @@ def sellitem():
     dosellitem(itemid,count)
 
 def dosellitem(itemid,count):
-    url = userinf.dataip + sell_url
+    url = userinf.dataip + db.sell_url
     param = {'equipmentid':itemid, 'count': count}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)

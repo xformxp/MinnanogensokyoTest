@@ -8,10 +8,7 @@ import hashlib
 import io
 import json
 import time
-
-mapdata_url = 'TouHouServer/map/mapdata'
-battledata_url = 'TouHouServer/battle/battledata'
-client_key = 'konakona'
+import db
 
 def battlefunc():
     utils.drawline('BATTLE')
@@ -48,26 +45,43 @@ def selectgroup():
             grouplist[group['groupid']] = group
     for groupid in grouplist:
         printgroup(grouplist[groupid])
-    print 'Select a group'
+    print 'Select a group(0 to exit)'
     sel = utils.select(5)
-    if str(sel) not in grouplist:
+    if sel == 0:
+        print 'Back to main menu'
+        return -1, None
+    elif str(sel) not in grouplist:
         print 'Invalid group.'
         return -1, None
     sel_group = grouplist[str(sel)]
-    utils.drawline('GROUP INFO')
-    printgroup(sel_group)
-    print 'TODO: Edit group' #TODO
-    return sel, sel_group
+    sel2 = editgroup(sel_group)
+    if sel2 == 1:
+        return sel, sel_group
+    else:
+        return -1, None
+
+def editgroup(group):
+    utils.drawline('EDIT GROUP')
+    print '0. 设置位置'
+    print '1. 前进'
+    print '2. 撤退'
+    sel = utils.select(2)
+    if sel == 0:
+        #TODO
+        utils.printjson(group)
+        printgroup(group)
+        return 1
+    else:
+        return sel
 
 def printgroup(group):
-    positionlist = {'12': 'Atk Mid(Captain)', '14': 'Atk Top', '10': 'Atk Bottom', '03': 'Def Top', '01': 'Def Bottom', '23': 'Aid Top', '21': 'Aid Bottom'}
     print 'Group #' + group['groupid'] + ':'
     for card in group['useractors']:
         position = card['mappointx'] + card['mappointy']
-        print positionlist[position] + ': ' + card['cardid'], plists.get_plist('card')[card['cardid']]['cardname'] + ', tag = ' + card['tag']
+        print db.positionlist[position] + ': ' + card['cardid'], plists.get_plist('card')[card['cardid']]['cardname'] + ', tag = ' + card['tag']
 
 def gotomap(mapname, sel, sel_group):
-    print 'Gotomap!'
+    utils.drawline('GOTOMAP')
     bn = dogetmapdata(mapname, 2, sel, sel_group)
     nextflag = dogetbattledata(bn, sel_group)
     if nextflag != '0':
@@ -78,7 +92,7 @@ def gotomap(mapname, sel, sel_group):
         nextflag = dogetbattledata(bn, sel_group)
 
 def dogetmapdata(mapid, difficulty, groupid, groupdata):
-    url = userinf.dataip + mapdata_url
+    url = userinf.dataip + db.mapdata_url
     s = ''
     for card in groupdata['useractors']:
         s += card['cardid'] + ',' + card['mappointx'] + ',' + card['mappointy'] + ';'
@@ -92,11 +106,11 @@ def dogetmapdata(mapid, difficulty, groupid, groupdata):
         return None
 
 def dogetbattledata(bn, groupdata):
-    url = userinf.dataip + battledata_url
+    url = userinf.dataip + db.battledata_url
     s = ''
     for card in groupdata['useractors']:
         s += card['cardid'] + ',' + card['mappointx'] + ',' + card['mappointy'] + ';'
-    param = {'m1': 'battledata', 'data': s, 'or': 0, 'bk': hashlib.sha1(client_key + bn).hexdigest(), 'equipmentid': '', 'iskszd': 0, 'kw': 'K' + str(utils.chi2_rand())}
+    param = {'m1': 'battledata', 'data': s, 'or': 0, 'bk': hashlib.sha1(db.client_key + bn).hexdigest(), 'equipmentid': '', 'iskszd': 0, 'kw': 'K' + str(utils.chi2_rand())}
     data = {'session': userinf.session}
     req = requests.post(url, params = param, data = data)
     status, returnjson = utils.testjson(req.text)
@@ -107,26 +121,24 @@ def dogetbattledata(bn, groupdata):
     return nextflag
     
 def printbattledata(battledata):
-    attacktypes = {u'3001': u'弹幕', u'1001': u'体术（撞击）', u'1002': u'体术（爪击）', u'1003': u'体术（响子）'}
-    damagetypes = {u'0': u'(miss)', u'1': u'', u'2': u'(block)', u'3': u'(crit)'} 
     filename = 'log/' + utils.gettime() + '.log'
     f = io.open(filename, 'w', encoding = 'utf-8')
     f.write(json.dumps(battledata, ensure_ascii = False, indent = 4, separators = (',',': ')))
     for data in battledata['battleData']:
-    #    print json.dumps(data, ensure_ascii = False)
+        #utils.printjson(data)
         if data['cmd'] == 'R':
-            print 'ROUND #' + data['rounds']
+            print 'ROUND #' + data['rounds'] + ','
         elif data['cmd'] == 'A':
-            print 'CHARA #' + data['actorid'] + ' moves.'
+            print 'CHARA #' + data['actorid'] + ' moves.', data['points'][0:2] + u'玉,', data['points'][2:4] + u'魔力'
         elif data['cmd'] == 'D':
             for unattack in data['unattack']:
-                print 'CHARA #' + data['attackid'] + ' attacks CHARA #'+ unattack['unattackid'] + ', damage = ' + unattack['damage'] + damagetypes[unattack['damagetype']] + ', type = ' + attacktypes[unattack['attacktype']]
+                print 'CHARA #' + data['attackid'] + ' attacks CHARA #'+ unattack['unattackid'] + ', damage = ' + unattack['damage'] + db.damagetypes[unattack['damagetype']] + ', type = ' + db.attacktypes[unattack['attacktype']]
         elif data['cmd'] == 'S':
             print 'SPELL: ' + data['spellname']
         elif data['cmd'] == 'RESULT':
             print 'RESULT: ' + data['result']
         else:
             print 'UNKNOWN cmd ' + data['cmd']
-            print json.dumps(data, ensure_ascii = False)
+            utils.printjson(data)
     return
 
