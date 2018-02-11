@@ -20,5 +20,8 @@ list				:
 clean				:
 	@rm -rf $(RUNFILES)
 
-login				: clean
+cleanlog			:
+	@rm -rf log/*.log
+
+logout				: clean
 	@rm -rf user.inf
