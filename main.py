@@ -10,14 +10,12 @@ import userinf
 import utils
 import general
 import equipments
+import card
+import quest
 
 # Client Constants
 ip_login = 'http://121.40.19.137:8070/'
 login_url = 'TouHouServer/logi/login'
-questdata_url = 'TouHouServer/quests/questsData'
-acceptquest_url = 'TouHouServer/quests/acceptQuests'
-cancelquest_url = 'TouHouServer/quests/cancelQuests'
-submitquest_url = 'TouHouServer/quests/submitQuests'
 mapdata_url = 'TouHouServer/map/mapdata'
 battledata_url = 'TouHouServer/battle/battledata'
 client_key = 'konakona'
@@ -51,153 +49,19 @@ def menu():
     print userinf.resources['gamename'] + ', LV ' + userinf.resources['level'] + ', ' + userinf.resources['exp'] + '/' + userinf.resources['upexp']
     print 'Gold: ' + userinf.resources['gold'] + ', faith: ' + userinf.resources['faith'] + ', food: ' + userinf.resources['food']
     print 'session: ' + userinf.session
-    utils.printjson(userinf.resources)
     utils.drawline('MENU')
     print '0. Battle - 出击（维护中）'
     print '1. FengNa - 领取赛钱箱'
     print '2. News - 文文新闻'
     print '3. Equipments - 物品'
-    print '4. Cards - 整备（维护中）'
-    print '5. Quests - 委托（维护中）'
+    print '4. Cards - 整备'
+    print '5. Quests - 委托'
     print '6. Banquet - 宴会（维护中）'
     print '7. 锻造（未实装）'
     print '8. 命令行（未实装）'
     print '9. 退出'
     return utils.select(9)
 
-def cardmenu():
-    utils.drawline('CARDMENU')
-    print '0. 查看人物'
-    print '1. 返回'
-    return utils.select(1)
-
-def questmenu():
-    utils.drawline('QUESTMENU')
-    print '0. 刷新任务列表'
-    print '1. 敲击任务'
-    print '2. 返回'
-    return utils.select(2)
-
-
-def updatequests():
-    global userquests
-    url = dataip + questdata_url
-    param = {'m1': 1}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    returnjson = json.loads(req.text)
-    userquests = returnjson
-
-def carddetail(cardlist):
-    utils.drawline('CARDDETAIL')
-    cardid = raw_input("Input card id:")
-    if not cardid in plists['card']:
-        print 'Input error.'
-        return
-    if not cardid in cardlist:
-        print 'You do not possess this card.'
-        return
-    card = cardlist[cardid]
-    print cardid + '\t' + card['cardname'] + ', LV' + card['level'] + ', ' + card['exp'] + '/' + card['upexp']
-    print 'Loyalty: ' + card['loyalty'] + ', Points: ' + card['feat']
-    print 'Skinid: ' + card['skinid'] + ', ' + plists['skin'][card['skinid']]['skinname'] + ', HasSkins: ' + card['haveskinids']
-    print 'HP: ' + card['hp'] + ', Def: ' + card['def'] + ', A.rate: ' + card['avoid'] + ', Luck: ' + card['lucky']
-    print 'AtkMel: ' + card['atk_mel'] + ', AtkRang: ' + card['atk_rang'] + ', H.rate: ' + card['hitrate'] + ', Crit: ' + card['crit']
-    print 'Block: ' + card['block'] + ', Speed: ' + card['speed'] 
-    if card['equipment_id_wq'] == '':
-        print 'Weapon: None,', 
-    else:
-        print 'Weapon: ' + card['equipment_id_wq'] + ' ' + plists['equipment'][card['equipment_id_wq']]['equipmentname'] + ',',
-    if card['equipment_id_fj'] == '':
-        print 'Armor: None'
-    else:
-        print 'Armor: ' + card['equipment_id_fj'] + ' ' + plists['equipment'][card['equipment_id_fj']]['equipmentname']
-    spell_atk = plists['spell'][card['spell_card_id_atk']]
-    spell_def = plists['spell'][card['spell_card_id_def']]
-    spell_aid = plists['spell'][card['spell_card_id_aid']]
-    print 'Spell Atk: ' + card['spell_card_id_atk'] + ' ' + spell_atk['name'] + spell_atk['spell_point'] + ', NeedLevel: ' + spell_atk['need_level'] + ', ' + spell_atk['spell_rate'] + '%'
-    print spell_atk['content']
-    print 'Spell Def: ' + card['spell_card_id_def'] + ' ' + spell_def['name'] + spell_def['spell_point'] + ', NeedLevel: ' + spell_def['need_level'] + ', ' + spell_def['spell_rate'] + '%'
-    print spell_def['content']
-    print 'Spell Aid: ' + card['spell_card_id_aid'] + ' ' + spell_aid['name'] + spell_aid['spell_point'] + ', NeedLevel: ' + spell_aid['need_level'] + ', ' + spell_aid['spell_rate'] + '%'
-    print spell_aid['content']
-    #TODO
-    print 'TODO: 加点，切换装备，咕了'
-
-def cardfunc():
-    utils.drawline('CARD')
-    cardlist = {}
-    for card in usercards:
-        cardlist[card['cardid']] = card
-        print card['cardid'] + '\t' + card['cardname']
-    sel = cardmenu()
-    if(sel == 1):
-        return
-    {0:carddetail}[sel](cardlist)
-
-def questfunc():
-    utils.drawline('QUEST')
-    sel = 0
-    updatequests()
-    while sel != 2:
-        operations = {}
-        questlist = {}
-        for quest in userquests:
-            id = quest['questsid']
-            questdetail = plists['quests'][id]
-            questlist[id] = quest
-            if int(quest['acceptflag']) == 0:
-                print '[未接受]\t',
-                operations[id] = doacceptquest
-            elif quest['complete'] == 'false':
-                print '[进行中]\t',
-                operations[id] = docancelquest
-            else:
-                print '[已完成]\t',
-                operations[id] = None #TODO
-            print id + '\t' + questdetail['cyclename'] + questdetail['name'] + ': ' + questdetail['true_content']
-            # print json.dumps(quest, ensure_ascii=False)
-        sel = questmenu()
-        if(sel != 2):
-            print '============================================'
-        if(sel == 0):
-            updatequests()
-        elif(sel == 1):
-            questid = raw_input('Input questid: ')
-            if questid not in plists['quests']:
-                print 'Invalid input'
-            elif questid not in operations:
-                print 'Quest not in list'
-            else:
-                operations[questid](questid,questlist[questid])
-    updatedata()
-
-def doacceptquest(questid,quest):
-    url = dataip + acceptquest_url
-    param = {'questsid':questid}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    # print req.text
-    if req.text == 'success':
-        quest['acceptflag'] = '1'
-
-def docancelquest(questid,quest):
-    url = dataip + acceptquest_url
-    param = {'questsid':questid}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    # print req.text
-    if req.text == 'success':
-        quest['acceptflag'] = '0'
-
-def dosubmitquest(questid,quest):
-    url = dataip + submitquest_url
-    param = {'questsid':questid}
-    data = {'session': session}
-    req = requests.post(url, params = param, data = data)
-    # print req.text
-    status, returnjson = testjson(req.text)
-    updatequests()
 
 def banquetfunc():
     utils.drawline('BANQUET')
@@ -349,6 +213,6 @@ if __name__ == '__main__':
         sel = menu()
         {
             0: battlefunc, 1: general.fengna, 2: general.getnews,
-            3: equipments.itemfunc, 4: cardfunc, 5: questfunc,
+            3: equipments.itemfunc, 4: card.cardfunc, 5: quest.questfunc,
             6: banquetfunc, 7: None, 8: None, 9: exit,
         }[sel]()
